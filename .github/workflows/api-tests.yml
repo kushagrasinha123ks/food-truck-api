@@ -25,6 +25,10 @@ concurrency:
 jobs:
   api-tests:
     runs-on: ubuntu-latest
+    env:
+      PORT: 3000
+      API_KEY: foodtruck-qa-2026
+      TAX_PERCENT: 5
 
     steps:
       - name: Check out repository
@@ -40,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Start Food Truck API
-        run: PORT=3000 npm start > server.log 2>&1 &
+        run: npm start > server.log 2>&1 &
 
       - name: Wait for API health check
         run: |
