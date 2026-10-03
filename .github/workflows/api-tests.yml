@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PORT: 3000
-      API_KEY: foodtruck-qa-2026
+      API_KEY: ${{ secrets.FOODTRUCK_API_KEY }}
       TAX_PERCENT: 5
 
     steps:
