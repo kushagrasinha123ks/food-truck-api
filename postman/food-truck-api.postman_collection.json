@@ -1,0 +1,1794 @@
+{
+  "info": {
+    "_postman_id": "f697f3f4-1747-49fc-bbd6-6f5a14bace01",
+    "name": "Food Truck API - Functional Tests",
+    "description": "End-to-end functional, negative, contract, business-rule, and security tests for the Food Truck API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl = pm.environment.get('baseUrl');",
+          "if (!baseUrl) {",
+          "  throw new Error('The baseUrl environment variable is required');",
+          "}",
+          "const requestId = pm.variables.replaceIn('{{$randomUUID}}');",
+          "pm.variables.set('requestId', requestId);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "testEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testPassword",
+      "value": "Test@123",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "billId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "const response = pm.response.json();",
+                  "pm.test('Health status exists and is UP', () => {",
+                  "  pm.expect(response).to.have.property('status');",
+                  "  pm.expect(response.status).to.eql('UP');",
+                  "});",
+                  "pm.test('Response time is below 1500 ms', () => pm.expect(pm.response.responseTime).to.be.below(1500));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.variables.replaceIn('{{$randomUUID}}');",
+                  "pm.collectionVariables.set('testEmail', `qa.${id}@example.com`);",
+                  "pm.collectionVariables.set('testPassword', 'Test@123');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Registration response values are correct', () => {",
+                  "  pm.expect(response.success).to.eql(true);",
+                  "  pm.expect(response.message).to.eql('Registration successful');",
+                  "  pm.expect(response.data).to.be.an('object');",
+                  "  pm.expect(response.data.userId).to.be.a('string').and.match(/^USR-\\d+$/);",
+                  "  pm.expect(response.data.name).to.eql('QA Automation User');",
+                  "  pm.expect(response.data.email).to.eql(pm.collectionVariables.get('testEmail'));",
+                  "  pm.expect(response.data).not.to.have.property('password');",
+                  "});",
+                  "pm.test('Registration response matches JSON Schema', () => {",
+                  "  pm.expect(response).to.have.jsonSchema({",
+                  "    type: 'object', required: ['success', 'message', 'data'], additionalProperties: false,",
+                  "    properties: {",
+                  "      success: { type: 'boolean', const: true },",
+                  "      message: { type: 'string' },",
+                  "      data: {",
+                  "        type: 'object', required: ['userId', 'name', 'email'], additionalProperties: false,",
+                  "        properties: { userId: { type: 'string' }, name: { type: 'string' }, email: { type: 'string' } }",
+                  "      }",
+                  "    }",
+                  "  });",
+                  "});",
+                  "pm.test('Response time is below 1500 ms', () => pm.expect(pm.response.responseTime).to.be.below(1500));",
+                  "pm.collectionVariables.set('userId', response.data.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QA Automation User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Login succeeds and returns the registered user', () => {",
+                  "  pm.expect(response.success).to.eql(true);",
+                  "  pm.expect(response.message).to.eql('Login successful');",
+                  "  pm.expect(response.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(response.data.userId).to.eql(pm.collectionVariables.get('userId'));",
+                  "});",
+                  "pm.test('Login response matches JSON Schema', () => {",
+                  "  pm.expect(response).to.have.jsonSchema({",
+                  "    type: 'object', required: ['success', 'message', 'token', 'data'], additionalProperties: false,",
+                  "    properties: {",
+                  "      success: { type: 'boolean', const: true }, message: { type: 'string' }, token: { type: 'string', minLength: 1 },",
+                  "      data: { type: 'object', required: ['userId'], additionalProperties: false, properties: { userId: { type: 'string' } } }",
+                  "    }",
+                  "  });",
+                  "});",
+                  "pm.test('Response time is below 1500 ms', () => pm.expect(pm.response.responseTime).to.be.below(1500));",
+                  "pm.collectionVariables.set('token', response.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Invalid email or password');",
+                  "  pm.expect(response.errorCode).to.eql('INVALID_CREDENTIALS');",
+                  "});",
+                  "pm.test('No token is returned', () => pm.expect(pm.response.json()).not.to.have.property('token'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"IncorrectPassword\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Protected Request Without Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Valid bearer token is required');",
+                  "  pm.expect(response.errorCode).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/ORD-0000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "ORD-0000"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Protected Request With Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Valid bearer token is required');",
+                  "  pm.expect(response.errorCode).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid-token",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/ORD-0000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "ORD-0000"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Menu",
+      "item": [
+        {
+          "name": "Get Menu - Default",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Default menu response contains pagination and records', () => {",
+                  "  pm.expect(response.success).to.eql(true);",
+                  "  pm.expect(response.page).to.eql(1);",
+                  "  pm.expect(response.limit).to.eql(5);",
+                  "  pm.expect(response.totalItems).to.eql(15);",
+                  "  pm.expect(response.totalPages).to.eql(3);",
+                  "  pm.expect(response.data).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.test('Every menu item has the required typed fields', () => {",
+                  "  response.data.forEach((item) => {",
+                  "    pm.expect(item.id).to.be.a('string'); pm.expect(item.name).to.be.a('string');",
+                  "    pm.expect(item.category).to.be.a('string'); pm.expect(item.price).to.be.a('number');",
+                  "    pm.expect(item.available).to.be.a('boolean'); pm.expect(item.rating).to.be.a('number');",
+                  "  });",
+                  "});",
+                  "pm.test('Menu response matches JSON Schema', () => {",
+                  "  pm.expect(response).to.have.jsonSchema({",
+                  "    type: 'object', required: ['success', 'page', 'limit', 'totalItems', 'totalPages', 'data'],",
+                  "    properties: {",
+                  "      success: { type: 'boolean', const: true }, page: { type: 'integer' }, limit: { type: 'integer' },",
+                  "      totalItems: { type: 'integer' }, totalPages: { type: 'integer' },",
+                  "      data: { type: 'array', items: { type: 'object', required: ['id', 'name', 'category', 'price', 'available', 'rating'],",
+                  "        properties: { id: { type: 'string' }, name: { type: 'string' }, category: { type: 'string' }, price: { type: 'number' }, available: { type: 'boolean' }, rating: { type: 'number' } } } }",
+                  "    }",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Menu Item By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Known seeded menu item is returned with correct types', () => {",
+                  "  pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Menu item retrieved successfully');",
+                  "  pm.expect(response.data.id).to.eql('ITEM-101'); pm.expect(response.data.name).to.eql('Veg Burger');",
+                  "  pm.expect(response.data.price).to.be.a('number'); pm.expect(response.data.available).to.be.a('boolean');",
+                  "  pm.expect(response.data.rating).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu/ITEM-101",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu",
+                "ITEM-101"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter Menu By Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is a burger', () => { pm.expect(response.data).not.empty; response.data.forEach((item) => pm.expect(item.category).to.eql('burger')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?category=burger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "burger"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter Menu By Availability",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is available', () => { pm.expect(response.data).not.empty; response.data.forEach((item) => pm.expect(item.available).to.eql(true)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?available=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "available",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter Menu By Price Range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Every result is within the requested price range', () => { pm.expect(response.data).not.empty; response.data.forEach((item) => { pm.expect(item.price).to.be.at.least(100); pm.expect(item.price).to.be.at.most(200); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?minPrice=100&maxPrice=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "minPrice",
+                  "value": "100"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "200"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sort Menu Price Ascending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json(); const prices = response.data.map((item) => item.price); const sorted = [...prices].sort((a, b) => a - b);",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prices are sorted in ascending order', () => pm.expect(prices).to.eql(sorted));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?sort=price&limit=15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "price"
+                },
+                {
+                  "key": "limit",
+                  "value": "15"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sort Menu Price Descending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json(); const prices = response.data.map((item) => item.price); const sorted = [...prices].sort((a, b) => b - a);",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Prices are sorted in descending order', () => pm.expect(prices).to.eql(sorted));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?sort=-price&limit=15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "-price"
+                },
+                {
+                  "key": "limit",
+                  "value": "15"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pagination - First Page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pagination metadata and page size are correct', () => { pm.expect(response.page).to.eql(1); pm.expect(response.limit).to.eql(5); pm.expect(response.totalItems).to.be.a('number'); pm.expect(response.totalPages).to.eql(Math.ceil(response.totalItems / 5)); pm.expect(response.data).to.be.an('array').with.lengthOf.at.most(5); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?page=1&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Combined Filter Sort Pagination",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json(); const prices = response.data.map((item) => item.price);",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All combined filters and pagination are honored', () => { pm.expect(response.data.length).to.be.at.most(3); response.data.forEach((item) => { pm.expect(item.category).to.eql('burger'); pm.expect(item.available).to.eql(true); }); pm.expect(prices).to.eql([...prices].sort((a, b) => b - a)); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?category=burger&available=true&sort=-price&page=1&limit=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "burger"
+                },
+                {
+                  "key": "available",
+                  "value": "true"
+                },
+                {
+                  "key": "sort",
+                  "value": "-price"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Menu Item Not Found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Menu item not found');",
+                  "  pm.expect(response.errorCode).to.eql('MENU_ITEM_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu/ITEM-999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu",
+                "ITEM-999999"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Pagination Parameter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Page must be a positive integer');",
+                  "  pm.expect(response.errorCode).to.eql('VALIDATION_ERROR');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/menu?page=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "menu"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Order response values are correct', () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Order created successfully'); pm.expect(response.data.orderId).to.match(/^ORD-\\d+$/); pm.expect(response.data.status).to.eql('created'); pm.expect(response.data.items).to.be.an('array').that.is.not.empty; pm.expect(response.data.totalAmount).to.be.above(0); });",
+                  "pm.test('Returned order total matches line-item calculation', () => { const calculated = response.data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0); response.data.items.forEach((item) => { pm.expect(item.quantity).to.be.above(0); pm.expect(item.unitPrice).to.be.a('number'); }); pm.expect(response.data.totalAmount).to.eql(calculated); });",
+                  "pm.test('Create order response matches JSON Schema', () => {",
+                  "  pm.expect(response).to.have.jsonSchema({ type: 'object', required: ['success', 'message', 'data'], properties: { success: { type: 'boolean', const: true }, message: { type: 'string' }, data: { type: 'object', required: ['orderId', 'status', 'items', 'totalAmount'], properties: { orderId: { type: 'string' }, status: { type: 'string' }, totalAmount: { type: 'number' }, items: { type: 'array', minItems: 1, items: { type: 'object', required: ['menuItemId', 'quantity', 'unitPrice'], properties: { menuItemId: { type: 'string' }, quantity: { type: 'integer', minimum: 1 }, unitPrice: { type: 'number' } } } } } } } });",
+                  "});",
+                  "pm.collectionVariables.set('orderId', response.data.orderId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"menuItemId\": \"ITEM-101\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Created order is retrieved', () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Order retrieved successfully'); pm.expect(response.data.orderId).to.eql(pm.collectionVariables.get('orderId')); pm.expect(response.data.status).to.eql('created'); pm.expect(response.data.items).to.be.an('array').that.is.not.empty; pm.expect(response.data.totalAmount).to.be.above(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Order is completely replaced with the new items', () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Order updated successfully'); pm.expect(response.data.orderId).to.eql(pm.collectionVariables.get('orderId')); pm.expect(response.data.items).to.have.lengthOf(1); pm.expect(response.data.items[0].menuItemId).to.eql('ITEM-205'); pm.expect(response.data.items[0].quantity).to.eql(3); });",
+                  "pm.test('Updated total is independently calculated', () => { const calculated = response.data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0); pm.expect(response.data.totalAmount).to.eql(calculated); pm.expect(response.data.totalAmount).to.eql(1020); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"menuItemId\": \"ITEM-205\",\n      \"quantity\": 3\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Updated Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Updated order persisted in memory', () => { pm.expect(response.data.orderId).to.eql(pm.collectionVariables.get('orderId')); pm.expect(response.data.items).to.have.lengthOf(1); pm.expect(response.data.items[0].menuItemId).to.eql('ITEM-205'); pm.expect(response.data.items[0].quantity).to.eql(3); pm.expect(response.data.totalAmount).to.eql(1020); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Missing API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Valid API key is required');",
+                  "  pm.expect(response.errorCode).to.eql('INVALID_API_KEY');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Valid API key is required');",
+                  "  pm.expect(response.errorCode).to.eql('INVALID_API_KEY');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "invalid-api-key",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Missing Bearer Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Valid bearer token is required');",
+                  "  pm.expect(response.errorCode).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Order ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Order not found');",
+                  "  pm.expect(response.errorCode).to.eql('ORDER_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/ORD-999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "ORD-999999"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Bills",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Generated bill values are correct', () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Bill generated successfully'); pm.expect(response.data.billId).to.match(/^BILL-\\d+$/); pm.expect(response.data.orderId).to.eql(pm.collectionVariables.get('orderId')); pm.expect(response.data.subtotal).to.be.a('number'); pm.expect(response.data.tax).to.be.a('number'); pm.expect(response.data.total).to.be.a('number'); });",
+                  "pm.test('Bill total equals subtotal plus tax', () => pm.expect(response.data.total).to.eql(response.data.subtotal + response.data.tax));",
+                  "pm.test('Generate bill response matches JSON Schema', () => { pm.expect(response).to.have.jsonSchema({ type: 'object', required: ['success', 'message', 'data'], properties: { success: { type: 'boolean', const: true }, message: { type: 'string' }, data: { type: 'object', required: ['billId', 'orderId', 'subtotal', 'tax', 'total'], properties: { billId: { type: 'string' }, orderId: { type: 'string' }, subtotal: { type: 'number' }, tax: { type: 'number' }, total: { type: 'number' } } } } }); });",
+                  "pm.collectionVariables.set('billId', response.data.billId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bills"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Receipt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Receipt contains the chained bill and order', () => { pm.expect(response.success).to.eql(true); pm.expect(response.data.billId).to.eql(pm.collectionVariables.get('billId')); pm.expect(response.data.orderId).to.eql(pm.collectionVariables.get('orderId')); pm.expect(response.data.items).to.be.an('array').that.is.not.empty; pm.expect(response.data.subtotal).to.be.a('number'); pm.expect(response.data.tax).to.be.a('number'); pm.expect(response.data.total).to.be.a('number'); });",
+                  "pm.test('Receipt total arithmetic is consistent', () => pm.expect(response.data.total).to.eql(response.data.subtotal + response.data.tax));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bills/{{billId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bills",
+                "{{billId}}",
+                "receipt"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate Bill",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('A bill already exists for this order');",
+                  "  pm.expect(response.errorCode).to.eql('BILL_ALREADY_EXISTS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bills"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bill Not Found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Bill not found');",
+                  "  pm.expect(response.errorCode).to.eql('BILL_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bills/BILL-999999/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bills",
+                "BILL-999999",
+                "receipt"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 Cleanup and Security Verification",
+      "item": [
+        {
+          "name": "Delete Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json(); pm.test('Status code is 200', () => pm.response.to.have.status(200)); pm.test('Order deletion succeeds', () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Order deleted successfully'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Deleted Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Order not found');",
+                  "  pm.expect(response.errorCode).to.eql('ORDER_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json(); pm.test('Status code is 200', () => pm.response.to.have.status(200)); pm.test('Logout succeeds', () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Logout successful'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Logged-Out Token Is Rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.test('Status code is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Response is JSON', () => pm.response.to.be.json);",
+                  "pm.test('Failure response matches the API contract', () => {",
+                  "  pm.expect(response.success).to.eql(false);",
+                  "  pm.expect(response.message).to.eql('Valid bearer token is required');",
+                  "  pm.expect(response.errorCode).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Request-Id",
+                "value": "{{requestId}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

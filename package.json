@@ -1,0 +1,20 @@
+{
+  "name": "food-truck-api",
+  "version": "1.0.0",
+  "description": "Minimal Express API for Postman and Newman practice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test:api": "npx newman run postman/food-truck-api.postman_collection.json -e postman/local.postman_environment.json",
+    "test:data": "npx newman run postman/food-truck-login-data-driven.postman_collection.json -e postman/local.postman_environment.json -d test-data/login-test-data.json -r cli,htmlextra --reporter-htmlextra-export reports/data-driven.html",
+    "test:api:report": "npx newman run postman/food-truck-api.postman_collection.json -e postman/local.postman_environment.json -r cli,htmlextra --reporter-htmlextra-export reports/index.html"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "newman": "^6.2.2",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

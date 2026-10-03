@@ -1,0 +1,68 @@
+[
+  {
+    "testCase": "Valid login",
+    "registerEmail": "dd-valid@example.com",
+    "registerPassword": "Test@123",
+    "loginEmail": "dd-valid@example.com",
+    "loginPassword": "Test@123",
+    "expectedStatus": 200,
+    "expectedSuccess": true,
+    "expectedMessage": "Login successful",
+    "expectedErrorCode": null
+  },
+  {
+    "testCase": "Wrong password",
+    "registerEmail": "dd-wrong-password@example.com",
+    "registerPassword": "Test@123",
+    "loginEmail": "dd-wrong-password@example.com",
+    "loginPassword": "WrongPassword",
+    "expectedStatus": 401,
+    "expectedSuccess": false,
+    "expectedMessage": "Invalid email or password",
+    "expectedErrorCode": "INVALID_CREDENTIALS"
+  },
+  {
+    "testCase": "Unknown email",
+    "registerEmail": "dd-setup-unknown@example.com",
+    "registerPassword": "Test@123",
+    "loginEmail": "dd-unknown@example.com",
+    "loginPassword": "Test@123",
+    "expectedStatus": 401,
+    "expectedSuccess": false,
+    "expectedMessage": "Invalid email or password",
+    "expectedErrorCode": "INVALID_CREDENTIALS"
+  },
+  {
+    "testCase": "Missing email",
+    "registerEmail": "dd-setup-missing-email@example.com",
+    "registerPassword": "Test@123",
+    "loginEmail": "",
+    "loginPassword": "Test@123",
+    "expectedStatus": 400,
+    "expectedSuccess": false,
+    "expectedMessage": "Email and password are required",
+    "expectedErrorCode": "VALIDATION_ERROR"
+  },
+  {
+    "testCase": "Missing password",
+    "registerEmail": "dd-missing-password@example.com",
+    "registerPassword": "Test@123",
+    "loginEmail": "dd-missing-password@example.com",
+    "loginPassword": "",
+    "expectedStatus": 400,
+    "expectedSuccess": false,
+    "expectedMessage": "Email and password are required",
+    "expectedErrorCode": "VALIDATION_ERROR"
+  },
+  {
+    "testCase": "Invalid email format",
+    "registerEmail": "dd-setup-invalid-email@example.com",
+    "registerPassword": "Test@123",
+    "loginEmail": "not-an-email",
+    "loginPassword": "Test@123",
+    "expectedStatus": 401,
+    "expectedSuccess": false,
+    "expectedMessage": "Invalid email or password",
+    "expectedErrorCode": "INVALID_CREDENTIALS"
+  }
+]

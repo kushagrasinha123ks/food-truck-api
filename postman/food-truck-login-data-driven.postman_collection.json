@@ -1,0 +1,173 @@
+{
+  "info": {
+    "_postman_id": "9294594a-daf3-42a5-ae38-83e643090a62",
+    "name": "Food Truck API - Data-Driven Login Tests",
+    "description": "JSON data-driven login scenarios. Each Newman iteration registers an isolated setup user, then validates login against expected iteration data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('baseUrl')) throw new Error('The baseUrl environment variable is required');",
+          "pm.variables.set('requestId', pm.variables.replaceIn('{{$randomUUID}}'));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "runtimeRegisterEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runtimeLoginEmail",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register Setup User",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const registerEmail = pm.iterationData.get('registerEmail');",
+              "const loginEmail = pm.iterationData.get('loginEmail');",
+              "const id = pm.variables.replaceIn('{{$randomUUID}}');",
+              "const parts = registerEmail.split('@');",
+              "const uniqueRegisterEmail = `${parts[0]}+${id}@${parts[1]}`;",
+              "pm.collectionVariables.set('runtimeRegisterEmail', uniqueRegisterEmail);",
+              "if (loginEmail === registerEmail) {",
+              "  pm.collectionVariables.set('runtimeLoginEmail', uniqueRegisterEmail);",
+              "} else if (loginEmail && loginEmail.includes('@')) {",
+              "  const loginParts = loginEmail.split('@');",
+              "  pm.collectionVariables.set('runtimeLoginEmail', `${loginParts[0]}+${id}@${loginParts[1]}`);",
+              "} else {",
+              "  pm.collectionVariables.set('runtimeLoginEmail', loginEmail || '');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const response = pm.response.json(); const testCase = pm.iterationData.get('testCase');",
+              "pm.test(`[${testCase}] setup registration returns 201`, () => pm.response.to.have.status(201));",
+              "pm.test(`[${testCase}] setup user is valid and isolated`, () => { pm.expect(response.success).to.eql(true); pm.expect(response.message).to.eql('Registration successful'); pm.expect(response.data.userId).to.match(/^USR-\\d+$/); pm.expect(response.data.email).to.eql(pm.collectionVariables.get('runtimeRegisterEmail')); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Request-Id",
+            "value": "{{requestId}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Data Driven User\",\n  \"email\": \"{{runtimeRegisterEmail}}\",\n  \"password\": \"{{registerPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Login Validation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const response = pm.response.json();",
+              "const testCase = pm.iterationData.get('testCase');",
+              "const expectedStatus = Number(pm.iterationData.get('expectedStatus'));",
+              "const expectedSuccess = pm.iterationData.get('expectedSuccess');",
+              "const expectedMessage = pm.iterationData.get('expectedMessage');",
+              "const expectedErrorCode = pm.iterationData.get('expectedErrorCode');",
+              "pm.test(`[${testCase}] status is correct`, () => pm.response.to.have.status(expectedStatus));",
+              "pm.test(`[${testCase}] success is correct`, () => pm.expect(response.success).to.eql(expectedSuccess));",
+              "pm.test(`[${testCase}] message is correct`, () => pm.expect(response.message).to.eql(expectedMessage));",
+              "pm.test(`[${testCase}] token/error contract is correct`, () => {",
+              "  if (expectedSuccess) {",
+              "    pm.expect(response.token).to.be.a('string').and.not.empty;",
+              "    pm.expect(response.data.userId).to.match(/^USR-\\d+$/);",
+              "  } else {",
+              "    pm.expect(response).not.to.have.property('token');",
+              "    pm.expect(response.errorCode).to.eql(expectedErrorCode);",
+              "  }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Request-Id",
+            "value": "{{requestId}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{runtimeLoginEmail}}\",\n  \"password\": \"{{loginPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
