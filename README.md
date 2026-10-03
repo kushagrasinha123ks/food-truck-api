@@ -1,242 +1,158 @@
-# Food Truck API
+# Food Truck API — Postman & Newman Automation
 
-A minimal Node.js and Express backend created specifically for a Postman/Newman API testing portfolio. Data is stored in memory and resets whenever the server restarts.
+A minimal Express API built as an API QA portfolio project. It demonstrates functional testing, data-driven testing, API chaining, Newman reporting, GitHub Actions, and GitHub Pages.
 
-## Installation and startup
+## CI/CD architecture
 
-```bash
-cd food-truck-api
-npm install
-npm start
+The Mermaid diagram is rendered as a vector by GitHub, so it remains sharp at any screen size.
+
+```mermaid
+flowchart TD
+    Push["Push or pull request"] --> Match{"Changed path matches?<br/>server.js<br/>middleware/**<br/>postman/**"}
+    Match -- No --> Skip["Workflow skipped"]
+    Match -- Yes --> Start["Start GitHub Actions workflow"]
+    Manual["Manual workflow_dispatch"] --> Start
+
+    subgraph CI["GitHub Actions · api-tests"]
+        Start --> Checkout["Checkout repository"]
+        Checkout --> Node["Set up Node.js 22"]
+        Node --> Install["npm ci"]
+        Install --> Env["Set PORT, API_KEY, TAX_PERCENT"]
+        Env --> API["Start Express API on port 3000"]
+        API --> Health{"/health ready<br/>within 60 seconds?"}
+        Health -- No --> StartupFail["Fail workflow"]
+        Health -- Yes --> Clean["Remove reports from previous runs"]
+        Clean --> Functional["Run functional collection<br/>33 requests · 95 assertions"]
+        Functional --> Data["Run data-driven collection<br/>6 iterations · 36 assertions"]
+        Data --> Reports["Generate latest HTML reports"]
+        Reports --> Artifact["Upload reports as Actions artifact"]
+        Artifact --> Passed{"All Newman tests passed?"}
+        Passed -- No --> TestFail["Fail workflow<br/>keep current Pages site unchanged"]
+    end
+
+    Passed -- Yes --> Publish{"Main push or manual run<br/>on main?"}
+    Publish -- No --> Complete["Complete without Pages deployment"]
+    Publish -- Yes --> PagesArtifact["Upload reports/ as Pages artifact"]
+    PagesArtifact --> Deploy["Deploy with GitHub Pages"]
+    Deploy --> Live["Latest successful reports are live"]
 ```
 
-Base URL: `http://localhost:3003`
+Only `server.js`, `middleware/**`, and `postman/**` changes trigger CI automatically. Manual runs remain available. A newer run cancels an older run for the same branch, old HTML is removed before generation, and Pages is updated only after both Newman suites pass.
 
-## Environment variables
+## Test automation
 
-The included `.env` file defines:
+### Suites
 
-| Variable | Default value | Purpose |
+| Suite | Scope | Execution |
 | --- | --- | --- |
-| `PORT` | `3003` | Server port |
-| `API_KEY` | `foodtruck-qa-2026` | Required API key for order and bill APIs |
-| `TAX_PERCENT` | `5` | Tax percentage used for bills |
+| Functional | End-to-end API behavior | 33 requests, 95 assertions |
+| Data-driven login | Positive and negative login scenarios | 6 iterations, 36 assertions |
 
-## Endpoints
+### Functional collection
 
-| Method | Endpoint | Protection | Purpose |
-| --- | --- | --- | --- |
-| GET | `/health` | None | Check server health |
-| POST | `/auth/register` | None | Register a user |
-| POST | `/auth/login` | None | Log in and receive a token |
-| POST | `/auth/logout` | Bearer token | Invalidate the current token |
-| GET | `/menu` | None | Filter, sort, and paginate menu items |
-| GET | `/menu/:id` | None | Get one menu item |
-| POST | `/orders` | Bearer token + API key | Create an order |
-| GET | `/orders/:id` | Bearer token + API key | Get an order |
-| PUT | `/orders/:id` | Bearer token + API key | Replace an order's items |
-| DELETE | `/orders/:id` | Bearer token + API key | Delete an order |
-| POST | `/bills` | Bearer token + API key | Generate a bill once per order |
-| GET | `/bills/:billId/receipt` | Bearer token + API key | Get a bill receipt |
-
-`GET /menu` supports `category`, `available`, `minPrice`, `maxPrice`, `sort`, `page`, and `limit`. Use `sort=price` for ascending price or `sort=-price` for descending price. Pagination defaults to page 1 with a limit of 5.
-
-## Expected headers
-
-Order and bill requests require both headers:
-
-```text
-Authorization: Bearer <token returned by login>
-X-API-Key: foodtruck-qa-2026
-```
-
-JSON requests should also send `Content-Type: application/json`.
-
-## Example flow
-
-Register:
-
-```bash
-curl -X POST http://localhost:3000/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Kushagra","email":"kush@test.com","password":"Test@123"}'
-```
-
-Log in and copy the returned `token`:
-
-```bash
-curl -X POST http://localhost:3003/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"kush@test.com","password":"Test@123"}'
-```
-
-Create an order:
-
-```bash
-curl -X POST http://localhost:3003/orders \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <token>' \
-  -H 'X-API-Key: foodtruck-qa-2026' \
-  -d '{"items":[{"menuItemId":"ITEM-101","quantity":2}]}'
-```
-
-Generate its bill:
-
-```bash
-curl -X POST http://localhost:3003/bills \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer <token>' \
-  -H 'X-API-Key: foodtruck-qa-2026' \
-  -d '{"orderId":"ORD-1001"}'
-```
-
-This backend intentionally stays small and dependency-light. It exists for testing authentication, API keys, API chaining, CRUD, filters, sorting, pagination, schemas, data-driven requests, status codes, and business rules in Postman and Newman.
-
-# API Test Automation
-
-## Purpose
-
-This repository is a portfolio-ready API QA project. It tests the Express Food Truck API with Postman collections, Newman CLI, JSON data, HTML reporting, and GitHub Actions while keeping the backend deliberately small and easy to understand.
-
-The checked-in Postman environment targets `http://localhost:3000`, as does CI. The current local `.env` starts the API on port `3003`, so use `PORT=3000 npm start` when running these collections locally. This configuration difference is documented rather than hidden by changing the backend.
-
-One contract detail discovered from source inspection is also reflected in the tests: successful registration returns the identifier as `data.userId`, not `data.id`.
-
-## Coverage
-
-The automation covers positive and negative authentication, API chaining, order CRUD, bearer-token lifecycle, API-key rejection, filters, sorting, pagination, query and path parameters, response contracts, business calculations, JSON Schema validation, variable scopes, pre-request scripts, post-response assertions, JSON data-driven testing, Newman, HTML reports, GitHub Actions, and GitHub Pages.
-
-Assertions verify returned values, field types, array contents, filtering and ordering behavior, pagination metadata, order and bill arithmetic, persistence, deletion, and token invalidation—not only HTTP status codes.
-
-## Architecture
-
-```text
-GitHub Actions
-      |
-      +--> Start Express API on port 3000
-      |
-      +--> Wait for /health
-      |
-      +--> Newman
-              |
-              +--> Functional Collection
-              |
-              +--> Data-Driven Collection
-              |       |
-              |       +--> login-test-data.json
-              |
-              +--> Assertions, API chaining, JSON Schema
-              |
-              +--> HTML reports
-                      |
-                      +--> Actions artifact
-                      +--> GitHub Pages
-```
-
-## Collection organization
-
-The functional collection runs in dependency order:
-
-| Folder | Responsibility |
+| Folder | Validates |
 | --- | --- |
-| `00 Health` | Availability, JSON response, and response-time check |
-| `01 Authentication` | Registration, login, token extraction, invalid credentials, and protected-route failures |
-| `02 Menu` | Seed lookup, filters, price sorting, pagination, combined queries, and negative cases |
-| `03 Orders` | Create, retrieve, replace, persistence, total calculation, API-key checks, and authorization checks |
-| `04 Bills` | Bill generation, receipt chaining, arithmetic, duplicate prevention, and not-found behavior |
-| `05 Cleanup and Security Verification` | Delete verification, logout, and proof that the logged-out token is rejected |
+| `00 Health` | Availability, JSON response, response time |
+| `01 Authentication` | Registration, login, token extraction, invalid credentials |
+| `02 Menu` | Item lookup, filters, sorting, pagination, invalid queries |
+| `03 Orders` | CRUD, API key, bearer token, pricing calculations |
+| `04 Bills` | Bill creation, receipt chaining, tax and total calculations |
+| `05 Cleanup and Security Verification` | Deletion, logout, token invalidation |
 
-The second collection contains only `Register Setup User` and `Login Validation`, keeping iteration-data behavior isolated from the normal functional run.
+Representative responses use JSON Schema validation. Assertions also verify field types, filtered values, sort order, pagination metadata, persistence, calculations, error codes, and authorization behavior.
 
-## Variable strategy
+### API chaining
 
-| Scope | Variables | Why this scope is used |
+```text
+Register → userId → Login → token → Create Order → orderId
+         → Generate Bill → billId → Receipt → Delete → Logout
+```
+
+Chained values are extracted with `pm.collectionVariables.set(...)`. The final request reuses the logged-out token and expects HTTP `401`.
+
+### Variable scopes
+
+| Scope | Variables |
+| --- | --- |
+| Environment | `baseUrl`, `apiKey` |
+| Collection | `testEmail`, `testPassword`, `userId`, `token`, `orderId`, `billId` |
+| Local/dynamic | `requestId`, `{{$randomUUID}}` |
+| Iteration | Login inputs and expected results from JSON |
+
+### Data-driven testing
+
+Each object in [`test-data/login-test-data.json`](test-data/login-test-data.json) becomes one Newman iteration. The same login request compares the actual result with `expectedStatus`, `expectedSuccess`, `expectedMessage`, and `expectedErrorCode`.
+
+An expected negative response, such as HTTP `401` for a wrong password, is a passing automated test.
+
+### Reports
+
+| Report | Location |
+| --- | --- |
+| Functional | [`reports/index.html`](reports/index.html) |
+| Data-driven | [`reports/data-driven.html`](reports/data-driven.html) |
+
+CI uploads both reports as the `newman-html-reports` artifact. The latest successful reports are also deployed to GitHub Pages.
+
+## API surface
+
+| Method | Endpoint | Protection |
 | --- | --- | --- |
-| Environment | `baseUrl`, `apiKey` | Values that change between runtime environments |
-| Collection | `testEmail`, `testPassword`, `userId`, `token`, `orderId`, `billId` | Chained values shared by requests in one collection run |
-| Local | `requestId` | A fresh request-only value created from `{{$randomUUID}}` |
-| Dynamic | `{{$randomUUID}}` | Unique emails and request IDs without hardcoded state |
-| Iteration | Login inputs and expected results | One independent scenario from `login-test-data.json` per Newman iteration |
+| GET | `/health` | None |
+| POST | `/auth/register` | None |
+| POST | `/auth/login` | None |
+| POST | `/auth/logout` | Bearer token |
+| GET | `/menu` | None |
+| GET | `/menu/:id` | None |
+| POST | `/orders` | Bearer token + API key |
+| GET | `/orders/:id` | Bearer token + API key |
+| PUT | `/orders/:id` | Bearer token + API key |
+| DELETE | `/orders/:id` | Bearer token + API key |
+| POST | `/bills` | Bearer token + API key |
+| GET | `/bills/:billId/receipt` | Bearer token + API key |
 
-No global variables are used. Each collection-level pre-request script verifies `baseUrl` and creates `requestId`; individual requests then send `X-Request-Id: {{requestId}}`.
+`GET /menu` supports `category`, `available`, `minPrice`, `maxPrice`, `sort`, `page`, and `limit`.
 
-## API chaining
+## Local setup
 
-The main flow is:
-
-```text
-Register -> userId -> Login -> token -> Create Order -> orderId
-         -> Generate Bill -> billId -> Receipt -> Delete -> Logout
-```
-
-Response values are extracted with `pm.collectionVariables.set(...)` and consumed by later requests. The final request deliberately reuses the old token and expects HTTP 401, proving that logout invalidates server-side session state.
-
-## Data-driven testing
-
-Each object in [test-data/login-test-data.json](test-data/login-test-data.json) becomes one Newman iteration:
-
-```text
-login-test-data.json
-        -> Newman -d
-        -> pm.iterationData
-        -> shared Login Validation request
-        -> actual response compared with expectedStatus,
-           expectedSuccess, expectedMessage, and expectedErrorCode
-```
-
-The setup request derives a unique runtime email from each row's `registerEmail`, so repeated runs against the same in-memory server do not collide. `loginEmail`, credentials, and all expected values still come from iteration data through `pm.iterationData.get(...)`.
-
-A negative API scenario is a passing automation test when the server returns the expected error. For example, a wrong password correctly returning HTTP 401 and `INVALID_CREDENTIALS` passes its Newman assertions.
-
-Run all six data scenarios with:
+Requirements: Node.js 22+ and npm.
 
 ```bash
-npm run test:data
-```
-
-## Newman commands
-
-Newman and the HTML Extra reporter are local development dependencies, so no global installation is needed:
-
-```bash
-npm install
-npm run test:api
-npm run test:data
-npm run test:api:report
-```
-
-- `npm run test:api` runs the functional collection in the CLI.
-- `npm run test:data` runs six JSON-driven login scenarios and creates `reports/data-driven.html`.
-- `npm run test:api:report` runs the functional collection and creates `reports/index.html`.
-
-## HTML reports
-
-Generated reports are written to:
-
-- `reports/index.html` — functional API tests
-- `reports/data-driven.html` — data-driven login tests
-
-Open either file in a browser after its command finishes. CI also uploads both as a downloadable `newman-html-reports` artifact for every run where they can be generated.
-
-## Continuous integration and GitHub Pages
-
-`.github/workflows/api-tests.yml` installs dependencies, starts the API with `PORT=3000`, waits up to 60 seconds for `/health`, runs both collections, generates reports, and uploads the reports even if Newman reports a failure. The workflow then fails when either collection failed. Reports deploy to GitHub Pages only after successful tests on a push, avoiding publication of a misleading failed run.
-
-Enable GitHub Pages with **Source: GitHub Actions** in the repository settings before the first deployment.
-
-## Run locally
-
-Terminal 1:
-
-```bash
+git clone https://github.com/kushagrasinha123ks/food-truck-api.git
+cd food-truck-api
 npm install
 PORT=3000 npm start
 ```
 
-Terminal 2:
+The API is available at `http://localhost:3000`.
+
+Protected order and bill requests require:
+
+```text
+Authorization: Bearer <login token>
+X-API-Key: foodtruck-qa-2026
+```
+
+### Run the tests
+
+Keep the API running, then use another terminal:
 
 ```bash
 npm run test:api
 npm run test:data
 npm run test:api:report
 ```
+
+| Command | Result |
+| --- | --- |
+| `npm run test:api` | Functional collection in the CLI |
+| `npm run test:data` | Data-driven collection and `reports/data-driven.html` |
+| `npm run test:api:report` | Functional collection and `reports/index.html` |
+
+## GitHub setup
+
+1. Open **Settings → Pages**.
+2. Set the source to **GitHub Actions**.
+3. Push a matching change or run **Food Truck API Tests** manually from the Actions tab.
+
+The workflow starts the API on the GitHub runner, executes both Newman suites, uploads the reports, and publishes Pages only when testing succeeds.
